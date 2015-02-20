@@ -1,0 +1,133 @@
+---
+title: "Supplement Effects on Tooth Growth in Guinea Pigs"
+author: "Shaun Collett"
+date: "February 18, 2015"
+output: pdf_document
+---
+
+In this analysis, we explore the response of 10 guinea pigs teeth to three dose
+levels of Vitamin C (0.5, 1 and 2 mg).  The dose levels were delivered via two
+methods: Orange Juice (OJ) or Vitamin C (VC).  Which one provided the best response?
+Keep reading.  First, we provide a couple plots to visually see how the data is 
+shaping up.
+
+```{r fig.width=5, fig.height=4}
+library(datasets)
+library(ggplot2)
+
+data(ToothGrowth)
+tg <- ToothGrowth
+tg$dose <- factor(tg$dose)
+tgmean <- aggregate(len ~ ., data=tg, mean)
+
+ggplot(tg, aes(x=dose, y=len)) + 
+    geom_point() +
+    geom_smooth(method="lm", aes(group=1)) + 
+    facet_grid(.~supp) +
+    labs(x="Dose") +
+    labs(y="Tooth Length") +
+    labs(title="Tooth Length by Dose and Supplement")
+
+ggplot(tgmean, aes(x=dose, y=len, group=supp)) +
+    geom_line(aes(linetype=supp))+
+    geom_point() + 
+    labs(x="Dose") +
+    labs(y="Tooth Length") +
+    labs(title="Average Tooth Length by Dose and Supplement")
+```
+
+### Plot Conclusions
+
+After reviewing both plots, it appears orange juice (OJ) is more effective than 
+vitamin C (VC) at lower doses, however as we reach maximum dose (2ml) then both
+methods are equally effective.  The following section puts that to the test, to
+see if (statistically speaking) the methods are similar or in fact different.
+
+## Confidence Intervals and Hypothesis Testing
+
+Using confidence intervals and hypothesis t-tests (since our sample size is small)
+we'll see whether there is a statistically meaningful difference between the doses.
+We'll establish 4 hypothesis to test, then determine whether we reject or
+fail to reject each based on the test output with conclusions to support why for each.
+
+We have a couple standard assumption across all our tests:
+
+1. We'll use the 95% confidence interval to decide whether we reject or fail to reject.
+2.  The 10 pigs tested are not paired.  In other words, the same 10 pigs were not
+used for each test variation.
+
+### Effect of tooth growth on two supplements (OJ and VC)
+
+In this experiment, we hypothesize there is no effect on the average tooth growth
+based on the supplemental given (OJ or VC) regardless of dose.  Let's put it to 
+the test:
+
+```{r}
+t.test(len ~ I(supp), paired=FALSE, data=tg)
+```
+
+There are a couple ways to look at this, all of which point towards failing to 
+reject the null hypothesis.  This concludes that dosage does play a role.
+
+1. Our p-value (6%) is greater than 5%, so we fail to reject.
+2. Our confidence interval, -0.17 to 7.57 contains 0, so we fail to reject.
+
+### Effect of tooth growth on low doses (<2ml) for different supplements
+
+In this experiment, we hypothesize there is no effect on the average tooth growth
+between supplements administered at lower doses (<2ml).
+
+Since doses are at 0.5, 1.0 and 2.0ml, we restrict the data set only to lower doses
+(<2ml) for this test.
+
+```{r}
+t.test(len ~ I(supp), paired=FALSE, data=tg[tg$dose %in% c("0.5","1"),])
+```
+
+Using similar criteria as the last test to judge our outcome, we find both offer
+supporting evidence to reject the null hypothesis, concluding that at low doses
+Orange Juice offers more "bang for the buck".
+
+1. Our p-value (0.4%) is significantly smaller than 5%.
+2. Our confidence interval does not contain 0, which means we have 95% confidence
+that we'll see an 1.88 to 9.30 lift in tooth growth in higher doses than lower.
+
+### Effect of tooth growth on high doses (2ml) for different supplements
+
+Contrary to the last experiment, we'll see how high doses between supplements
+provide a meaningful difference.  Our hypothesis is there is no meaningful 
+difference.
+
+```{r}
+t.test(len ~ I(supp), paired=FALSE, data=tg[tg$dose == "2",])
+```
+
+Since our p-value (96%) is higher than 5% and our confidence interval contains 0,
+we fail to reject our null hypothesis.  This means at higher doses, there is no
+difference in the effect of different supplements.
+
+### Effect on tooth growth from lower doses (<2ml) to high doses (2ml)
+
+Since we found there is no difference between supplements at higher doses, we
+want to test whether higher doses in fact do have an impact.  Our hypothesis is
+they do not.
+
+To ready the test, we need to group the low and high doses.
+
+```{r}
+tg$dosegroup <- "low"
+tg[tg$dose == "2",]$dosegroup <- "high"
+
+t.test(len ~ I(dosegroup), paired=FALSE, data=tg)
+```
+
+With a p-value less than 5% and a confidence interval that does not contain 0, 
+we reject our null hypothesis and conclude that higher doses do in fact have 
+significant effect over lower doses.
+
+### Hypothesis Testing Conclusions
+
+Through these tests, we've found that higher doses of either Orange Juice or
+Vitamin C will offer significantly more tooth growth over low doses of either
+supplement.  However, if you're constrained to lower doses, Orange Juice offers
+more "bang for the buck" than Vitamin C.
